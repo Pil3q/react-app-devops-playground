@@ -18,7 +18,7 @@ If you don't already have a GitHub account then please sign up [here](https://gi
 We will be using one repository for this playground:
 1. The [react-app-devops-playground](https://github.com/richieganney/react-app-devops-playground) repository. This is the repository you're currently in, and it contains all the application code and scripts that we will need to actually deploy the web app to AWS.
 
-You will also have a Jenkins server that the playground team have spun up for you this evening...(instructions on how to reach their server)
+You will also have a Jenkins server that the playground team have spun up for you this evening...
 
 # Section 1 - the first script: build the Pipeline as Code script.
 
@@ -28,6 +28,17 @@ First and foremost, you all need your own forked repository so you all have your
 Go to the [react-app-devops-playground](https://github.com/richieganney/react-app-devops-playground) and click `fork`
 
 ![](readme_images/fork.png)
+
+You can copy the url of the repository from the GitHub user interface like so:
+![](readme_images/copy_url.png)
+
+Pull down your **forked** [react-app-devops-playground](https://github.com/richieganney/react-app-devops-playground) repository and cd into it. In your terminal, run:
+```
+git pull <FORKED_REPOSITORY>
+cd <FORKED_REPOSITORY>
+```
+
+Replace `<FORKED_REPOSITORY>` with your forked repository url
 
 Navigate to the forked repository and click in the `jobs` folder. You should see an empty file called `DeployReactApp.groovy`
 
@@ -111,7 +122,7 @@ the `parameters {}` block allows us to define any parameters we want our pipelin
 
 Here we are using the `definition {}` block to specify the Git repository. You will notice two variables that we will be passing into the seed job when we build it:
 
-- `GIT_USER`: this will be the credentials to your personal GitHub account so Jenkins can pull down the repo (don't worry, we haven't configured this yet).
+- `GIT_USER`: this will be the credentials to your personal GitHub account so Jenkins can clone the repo (don't worry, we haven't configured this yet).
 - `GIT_URL`: this is the url of your forked [react-app-devops-playground](https://github.com/richieganney/react-app-devops-playground) repository.
 
 The `scriptPath('')` function defines the file path to the pipeline script that will be used to deploy our application. We'll come back onto this in Section 3
@@ -123,8 +134,6 @@ The `scriptPath('')` function defines the file path to the pipeline script that 
 git pull <FORKED_REPOSITORY>
 cd <FORKED_REPOSITORY>
 ```
-Replace `<FORKED_REPOSITORY>` with your forked repository. You can copy the url of the repository from the GitHub user interface like so:
-![](readme_images/copy_url.png)
 
 2. Open the repository in your text editor (I'm using VS Code) and click on the `DeployReactApp.groovy` script.
 ![](readme_images/jenkins_dsl.png)
@@ -212,7 +221,7 @@ All of the plugins for this playground have been pre-installed on your Jenkins s
 ![](readme_images/terraform_installation_details.png)
     - Name: **terraform**
     - Install Automatically: (box checked)
-    - Version: **Terraform 0.13.3 linux (amd64)**
+    - Version: **Terraform 00923 linux (amd64)**
 - Click **Save** which will take you back to the homepage.
 
 ### 4. Configure Jenkins with an AWS region so it knows where to deploy it to. Navigate to:
@@ -225,7 +234,8 @@ All of the plugins for this playground have been pre-installed on your Jenkins s
 
 - Fill in the fields with the following information:
     - Name: **AWS_DEFAULT_REGION**
-    - Value: **eu-west-1**
+    - Value: **eu-west-2**
+
 ![](readme_images/aws_region.png)
 - Click save and we are done with the Jenkins configuration!
 
@@ -274,13 +284,6 @@ Now all we need to do is populate the `Jenkinsfile` and the `variables.tf` file 
 Onto Section 3...
 
 # Section 3: populate the `Jenkinsfile` and the `variables.tf` file.
-
-Pull down your [forked react repo](https://github.com/richieganney/react-app-devops-playground) to your local machine:
-
-```
-git pull <FORKED_REACT_REPO>
-cd <FORKD_REACT_REPO>
-```
 
 1. Similar to how we populated the Jenkins DSL script, copy the code below paste it into the `Jenkinsfile` located in the root of this directory.
 
@@ -428,15 +431,6 @@ Now that we have pushed the changes, let's go back to Jenkins to see if the **De
 
 You should see the output of all the various stages of our deployment.
 
-### 4. At the bottom, you'll see the following message:
-```
-Application successfully deployed! Please visit http://<ELB_DOMAIN_NAME> in your browser to view it.
-```
-Click the link to see the deployed website!
-> Note: it will take a couple of minutes for the application to deploy, so don't be alarmed if the link isn't working just yet. It will!
-
-AWS lets you utilise resources such as [Amazon Route 53](https://www.google.com/search?q=route+53+aws&oq=route+53+aws&aqs=chrome..69i57j0l5j69i60l2.3169j0j7&sourceid=chrome&ie=UTF-8) to set up domains to your websites. Check out the link above for the documentation.
-
 ### While we wait..
 
 It should be a couple of minutes until the website is live. While we wait, lets go through whats happening from an end to end perspective.
@@ -445,9 +439,21 @@ It should be a couple of minutes until the website is live. While we wait, lets 
 
 1. A build folder is created which packages up our application.
 2. We zip up that folder and send it off to Amazon S3.
-3. When the infrastructure is provisioned, the deployed servers will pull down that build zip file and unzip it.
-4. The build package is ultimately served on port 80 (http://), which allows the public to visit and use the website.
+3. Terraform is initialised and provisions a load balancer and an autoscaling group into a virtual private cloud (VPC)
+4. When the infrastructure is provisioned, the deployed servers will pull down that build zip file and unzip it.
+5. The build package is then ultimately served on port 80 (http://), which allows the public to visit and use the website.
 
 #### Our infrastructure
 - **load balancer**: this will distribute traffic across our servers depending on the health and utilisation of those servers. If one is in poor health, it will redirect traffic to a healthy one.
 - **autoscaling group**: this will automatically scale our application up/down depending on how we configure it. If we have an unexpected surge in traffic, it will provision more servers to make the application more available
+
+### 4. At the bottom of the logs, you'll see the following message:
+```
+Application successfully deployed! Please visit http://<ELB_DOMAIN_NAME> in your browser to view it.
+```
+Click the link to see the deployed website!
+> Note: it will take a couple of minutes for the application to deploy, so don't be alarmed if the link isn't working just yet. It will!
+
+AWS lets you utilise resources such as [Amazon Route 53](https://www.google.com/search?q=route+53+aws&oq=route+53+aws&aqs=chrome..69i57j0l5j69i60l2.3169j0j7&sourceid=chrome&ie=UTF-8) to set up domains to your websites. Check out the link above for the documentation.
+
+Thats all for tonight! Thanks for joining, I hope you enjoyed it!
